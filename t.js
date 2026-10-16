@@ -26,8 +26,14 @@
   }
   window.track = function(kind, detail){ send(kind, detail) };
 
-  // the view waits a beat, so a page that instantly hops to its fresh build counts once
-  var viewTimer = setTimeout(function(){ send('view', document.title) }, 1200);
+  // The view waits until the page's fresh-build check is done (window.__freshPending,
+  // set by the site's head script). If that check hops to a newer build, this page
+  // unloads first and only the new page counts. On slow cell data it can take >1s.
+  var viewTimer, waited = 0;
+  (function tryView(){
+    if (window.__freshPending === true && waited < 8000){ waited += 250; viewTimer = setTimeout(tryView, 250); return; }
+    viewTimer = setTimeout(function(){ send('view', document.title) }, waited ? 300 : 800);
+  })();
   addEventListener('pagehide', function(){ clearTimeout(viewTimer) });
 
   // taps worth knowing about
@@ -47,12 +53,13 @@
   }, true);
 
   // time actually looking at the page, and how far down they got
-  var shown = document.visibilityState==='visible' ? Date.now() : 0, seen = 0, maxPct = 0;
+  var shown = document.visibilityState==='visible' ? Date.now() : 0, seen = 0, maxPct = 0, lastLeave = -1;
   function depth(){ var d=document.documentElement, p=Math.round(100*(scrollY+innerHeight)/Math.max(1,d.scrollHeight)); if(p>maxPct) maxPct=Math.min(100,p) }
   addEventListener('scroll', depth, {passive:true}); depth();
   function bye(){
     if (shown){ seen += Date.now()-shown; shown = 0 }
-    if (seen > 1500) send('leave', Math.round(seen/1000)+'s|'+maxPct+'%');
+    var secs = Math.round(seen/1000);
+    if (seen > 1500 && secs !== lastLeave){ lastLeave = secs; send('leave', secs+'s|'+maxPct+'%'); }
   }
   document.addEventListener('visibilitychange', function(){
     if (document.visibilityState==='hidden') bye(); else shown = Date.now();

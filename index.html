@@ -51,6 +51,7 @@
   .tag.src{color:var(--blue)} .tag.new{color:var(--grn)} .tag.back{color:var(--acc)} .tag.site{color:var(--mut)}
   .acts{margin-top:9px;display:flex;flex-direction:column;gap:4px;font-size:.84rem;color:#d9cdbf}
   .acts div{display:flex;gap:8px} .acts em{font-style:normal;color:var(--mut);flex:none;width:58px}
+  .mebtn{margin-left:auto;font:inherit;font-size:.75rem;font-weight:600;padding:4px 10px;border-radius:8px;border:1px solid var(--line);background:transparent;color:var(--mut);cursor:pointer}
   .empty,.gate{text-align:center;color:var(--mut);padding:60px 20px}
   .foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:22px;font-size:.82rem;color:var(--mut);flex-wrap:wrap}
   .foot button{font:inherit;font-weight:600;padding:8px 13px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--txt);cursor:pointer}
@@ -162,6 +163,7 @@ function render(){
     tags+= v.me?'<span class="tag">You</span>':(v.isNew?'<span class="tag new">New visitor</span>':'<span class="tag back">Came back</span>');
     if(v.leaveS) tags+='<span class="tag">⏱ '+(v.leaveS>=60?Math.floor(v.leaveS/60)+'m '+(v.leaveS%60)+'s':v.leaveS+'s')+'</span><span class="tag">↓ '+v.leaveP+'%</span>';
     if(f.screen) tags+='<span class="tag">'+esc(f.screen)+'</span>';
+    if(f.vid) tags+='<button class="mebtn" data-vid="'+esc(f.vid)+'" data-me="'+(v.me?'0':'1')+'">'+(v.me?'Not me':'This is me')+'</button>';
     var acts=v.events.filter(function(e){return e.kind!=='view'&&e.kind!=='leave'}).map(function(e){return '<div><em>'+clock(new Date(e.at))+'</em><span>'+esc(act(e))+'</span></div>'}).join('');
     h+='<div class="visit'+(v.me?' me':'')+'"><div class="row1"><div class="ico">'+icon(f.device)+'</div>'+
       '<div class="who"><b>'+esc(f.device||'Unknown device')+(place?' · '+esc(place):'')+'</b><span>'+esc(sub)+'</span></div>'+
@@ -191,6 +193,13 @@ function load(){
 document.addEventListener('click',function(e){
   var c=e.target.closest('.chip');
   if(c){ state.site=c.dataset.s||null; try{state.site?localStorage.setItem('visits-site',state.site):localStorage.removeItem('visits-site')}catch(e){} render(); return; }
+  var mb=e.target.closest('.mebtn');
+  if(mb){
+    mb.textContent='Saving…';
+    fetch(API.replace('/log','/me'),{method:'POST',headers:{'x-visits-key':KEY,'Content-Type':'text/plain'},body:JSON.stringify({vid:mb.dataset.vid,me:mb.dataset.me==='1'})})
+      .then(function(r){ if(!r.ok) throw 0; load(); }).catch(function(){ mb.textContent='Try again'; });
+    return;
+  }
   if(e.target.id==='meBtn'){ try{ localStorage.getItem('trk-me')==='1'?localStorage.removeItem('trk-me'):localStorage.setItem('trk-me','1') }catch(e){} paintButtons(); }
   if(e.target.id==='showMe'){ state.showMe=!state.showMe; try{localStorage.setItem('visits-showme',state.showMe?'1':'0')}catch(e){} paintButtons(); render(); }
 });
