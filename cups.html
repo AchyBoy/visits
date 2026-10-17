@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>Cup Wall · Moderate</title>
+<meta name="theme-color" content="#14100d">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700&family=Inter:wght@400;600;700&family=Permanent+Marker&family=Caveat:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#14100d;--card:#1f1915;--card2:#2a221c;--line:rgba(255,255,255,.08);--txt:#f4ece2;--mut:#a8998b;--acc:#e2aa6c;--red:#ff8f7a;--grn:#58d68d}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.45 Inter,system-ui,sans-serif;padding-bottom:40px}
+  .wrap{max-width:720px;margin:0 auto;padding:0 16px}
+  header{position:sticky;top:0;background:rgba(20,16,13,.94);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--line);padding:calc(10px + env(safe-area-inset-top)) 0 10px;z-index:5}
+  h1{font-family:Fraunces,serif;font-size:1.4rem;margin:0}
+  header p{margin:2px 0 0;color:var(--mut);font-size:.82rem}
+  .sec{margin:20px 0 8px;font-size:.76rem;color:var(--mut);text-transform:uppercase;letter-spacing:.1em;font-weight:700}
+  .cup{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px;display:flex;gap:12px;align-items:flex-start}
+  .cup.held{border-color:rgba(226,170,108,.5)}
+  .cup.hidden{opacity:.5}
+  .nm{font-family:'Permanent Marker',cursive;font-size:1.1rem}
+  .dk{font-size:.72rem;color:var(--mut);text-transform:uppercase;letter-spacing:.08em}
+  .nt{font-family:Caveat,cursive;font-size:1.3rem;line-height:1.15;margin-top:2px;overflow-wrap:anywhere}
+  .meta{font-size:.76rem;color:var(--mut);margin-top:4px}
+  .why{color:var(--acc)}
+  .body{flex:1;min-width:0}
+  .btns{display:flex;flex-direction:column;gap:6px;flex:none}
+  button{font:inherit;font-size:.82rem;font-weight:700;padding:8px 12px;border-radius:10px;border:1px solid var(--line);background:var(--card2);color:var(--txt);cursor:pointer}
+  button.ok{background:var(--grn);color:#0d2416;border-color:var(--grn)}
+  button.no{color:var(--red)}
+  .empty{color:var(--mut);text-align:center;padding:40px 0}
+</style>
+</head>
+<body>
+<header><div class="wrap"><h1>☕ Cup Wall</h1><p>Approve held cups, hide anything that should not be up. Changes show on the site right away.</p></div></header>
+<main class="wrap" id="main"><div class="empty">Loading…</div></main>
+<script>
+var SITE=(location.hash.match(/s=([a-z0-9._-]+)/)||[])[1]||'louisiana-bean';
+var KEY=(location.hash.match(/k=([a-z0-9]+)/)||[])[1]||'';
+var API='https://api.jobhubgo.com/api/cups/'+SITE;
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function when(at){return new Date(at).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',timeZone:'America/Chicago'})}
+var WHY={word:'held: a word that might not be friendly',link:'held: has a link or @handle'};
+function row(c){
+  var b = c.status==='held' ? '<button class="ok" data-id="'+c.id+'" data-s="live">Approve</button><button class="no" data-id="'+c.id+'" data-s="hidden">Hide</button>'
+        : c.status==='live' ? '<button class="no" data-id="'+c.id+'" data-s="hidden">Hide</button>'
+        : '<button data-id="'+c.id+'" data-s="live">Show again</button>';
+  return '<div class="cup '+c.status+'"><div class="body"><div class="nm">'+esc(c.name)+'</div>'+(c.drink?'<div class="dk">'+esc(c.drink)+'</div>':'')+
+    '<div class="nt">“'+esc(c.note)+'”</div><div class="meta">'+when(c.at)+' · 🥂 '+(c.cheers||0)+(c.heldReason&&c.status==='held'?' · <span class="why">'+WHY[c.heldReason]+'</span>':'')+'</div></div>'+
+    '<div class="btns">'+b+'</div></div>';
+}
+function load(){
+  if(!KEY){ document.getElementById('main').innerHTML='<div class="empty">This page needs the private link.</div>'; return; }
+  fetch(API+'/admin/all',{headers:{'x-cups-key':KEY},cache:'no-store'}).then(function(r){ if(r.status===403) throw new Error('key'); return r.json() })
+  .then(function(j){
+    var held=j.cups.filter(function(c){return c.status==='held'}), live=j.cups.filter(function(c){return c.status==='live'}), hid=j.cups.filter(function(c){return c.status==='hidden'});
+    var h='';
+    h+='<div class="sec">Waiting for you ('+held.length+')</div>'+(held.length?held.map(row).join(''):'<div class="empty">Nothing waiting 👍</div>');
+    h+='<div class="sec">On the wall ('+live.length+')</div>'+(live.length?live.map(row).join(''):'<div class="empty">No cups yet</div>');
+    if(hid.length) h+='<div class="sec">Hidden ('+hid.length+')</div>'+hid.map(row).join('');
+    document.getElementById('main').innerHTML=h;
+  }).catch(function(e){ document.getElementById('main').innerHTML='<div class="empty">'+(e.message==='key'?'Wrong link.':'Could not load, pull to refresh.')+'</div>' });
+}
+document.addEventListener('click',function(e){
+  var b=e.target.closest('button[data-id]'); if(!b) return;
+  b.textContent='…';
+  fetch(API+'/'+b.dataset.id+'/status',{method:'POST',headers:{'x-cups-key':KEY,'Content-Type':'text/plain'},body:JSON.stringify({status:b.dataset.s})}).then(load);
+});
+load(); setInterval(load,30000);
+</script>
+</body>
+</html>

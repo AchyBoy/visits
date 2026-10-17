@@ -105,6 +105,8 @@ function act(e){
     case 'drink': return '🧋 Built a drink: '+d;
     case 'music': return d==='off'?'🔇 Turned the music off':'🎷 Music playing';
     case 'nav': return '👆 Tapped "'+d+'"';
+    case 'cup': return '✍️ Signed a cup: '+d;
+    case 'cheers': return '🥂 Clinked '+d+'\u2019s cup';
     case 'link': return '🔗 Opened '+d;
     default: return e.kind+(d?': '+d:'');
   }
